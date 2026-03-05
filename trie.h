@@ -3,20 +3,20 @@
 
 #include <stdint.h>
 
-// Definición de la estructura del nodo
+// Node structure definition
 struct node {
     // Forwarding Info
     uint32_t prefix; 
     int prefixLength;
-    int bitPosition; // Siguiente bit a evaluar (índice 0 a 31)
-    int outInterface; // Usaremos -1 para indicar que es NULL / no tiene interfaz
+    int bitPosition;  // Next bit to evaluate (index 0 to 31)
+    int outInterface; // We will use -1 to indicate it is NULL / has no interface
 
     // Children
-    int k; // Ramificación: 2^k hijos
-    struct node **children;  // Array dinámico de punteros a hijos
+    int k;                   // Branching factor: 2^k children
+    struct node **children;  // Dynamic array of pointers to children
 };
 
-// Declaraciones de las funciones de la Fase 1
+// Phase 1 function declarations
 struct node* createNode(int bitPos);
 void insertPrefixSimpleTrie(struct node *root, uint32_t ip, int prefixLength, int outInterface);
 
