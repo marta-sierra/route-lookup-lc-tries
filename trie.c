@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include "trie.h"
 
+// =======================================================
+// --- PHASE 1: TREE BUILDING ---
+// =======================================================
+
 // Creates a new node in memory, initialized by default as an empty binary node
 struct node* createNode(int bitPos) {
     struct node* newNode = (struct node*)malloc(sizeof(struct node));
@@ -54,6 +58,11 @@ void insertPrefixSimpleTrie(struct node *root, uint32_t ip, int prefixLength, in
     current->prefix = ip;
     current->prefixLength = prefixLength;
 }
+
+// =======================================================
+// --- PHASE 3: LOOKUP FUNCTIONS ---
+// =======================================================
+
 // Helper function: Extracts 'k' bits starting from 'bitPosition' going downwards. 
 uint32_t getBits(uint32_t ip, int bitPosition, int k) { 
     int shift_amount = 32 - (bitPosition + k); 
@@ -65,7 +74,7 @@ uint32_t getBits(uint32_t ip, int bitPosition, int k) {
 // Helper function: Compares the top prefixLength bits of the IP and the Prefix
 int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength) { 
     if (prefixLength == 0) { 
-        return 1; // 1 significa 'true' en C
+        return 1; // 1 means 'true' in C
     }
     
     int shift_amount = 32 - prefixLength; 
@@ -75,11 +84,11 @@ int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength) {
     if (ip_shifted == prefix_shifted) { 
         return 1; 
     } else { 
-        return 0; // 0 significa 'false'
+        return 0; // 0 means 'false'
     }
 }
 
-// LOOKUP FUNCTION 
+// LOOKUP FUNCTION: Traverses the trie and updates memory accesses
 int lookUp(struct node *root, uint32_t ip, int *memory_accesses) {
     struct node *current = root;
     int best_match_interface = root->outInterface;
@@ -90,19 +99,84 @@ int lookUp(struct node *root, uint32_t ip, int *memory_accesses) {
         
         // Check if this node holds a valid route 
         if (current->outInterface != -1) { 
-            // Verify the prefix matches (because Patricia skips bits) 
+            // Verify the prefix matches (necessary because Patricia skips bits) 
             if (checkPrefixMatch(ip, current->prefix, current->prefixLength) == 1) {
                 best_match_interface = current->outInterface;
             }
         }
             
-        // Extraemos los bits para saber por qué rama bajar
+        // Extract the required bits to determine which branch to take
         int index = getBits(ip, current->bitPosition, current->k);
         
-        // Saltamos al hijo. 
-        // Nota: Si el hijo es NULL (estamos en un leaf), el while se romperá automáticamente arriba.
+        // Jump to the child. 
+        // Note: If the child is NULL (we are at a leaf), the while loop breaks at the top.
         current = current->children[index]; 
     }
     
     return best_match_interface;
+}
+
+// =======================================================
+// --- PHASE 4: COMPRESSION & UTILS ---
+// =======================================================
+
+// Helper function: Counts the total number of non-null nodes in the tree
+int countNodes(struct node *root) {
+    if (root == NULL) return 0;
+    
+    int count = 1; // Count the current node
+    
+    // Sum the nodes from all existing branches
+    // In Patricia/Standard Trie, k=1 (2 children)
+    int num_children = 1 << root->k; 
+    for (int i = 0; i < num_children; i++) {
+        if (root->children[i] != NULL) {
+            count += countNodes(root->children[i]);
+        }
+    }
+    return count;
+}
+
+// PATRICIA COMPRESSION (Safe version using Double Pointers)
+void patriciaCompress(struct node **node_ptr) {
+    if (*node_ptr == NULL) return;
+    struct node *node = *node_ptr;
+
+    // 1. BASE CASE: It is a leaf, cannot be compressed further
+    if (node->children[0] == NULL && node->children[1] == NULL) {
+        return;
+    }
+
+    // 2. BIFURCATION: It has two children, so it's a necessary routing point. 
+    // We cannot compress it, so we just evaluate its children.
+    if (node->children[0] != NULL && node->children[1] != NULL) {
+        patriciaCompress(&(node->children[0]));
+        patriciaCompress(&(node->children[1]));
+        return;
+    }
+
+    // 3. IT ONLY HAS ONE CHILD
+    struct node *child = (node->children[0] != NULL) ? node->children[0] : node->children[1];
+
+    // If the current node holds a valid route (outInterface != -1) OR is the root (bitPosition == 0), 
+    // we CANNOT compress it. We just move on to evaluate its child.
+    if (node->outInterface != -1 || node->bitPosition == 0) {
+        if (node->children[0] != NULL) {
+            patriciaCompress(&(node->children[0]));
+        } else {
+            patriciaCompress(&(node->children[1]));
+        }
+    } 
+    // IT IS A USELESS NODE (1 child and no route): WE COMPRESS!
+    else {
+        // Point the parent's pointer directly to the grandchild
+        *node_ptr = child;
+        
+        // Free the memory of the useless node we just bypassed
+        free(node->children);
+        free(node);
+        
+        // Recursive call on the node that took its place (in case it is also useless)
+        patriciaCompress(node_ptr);
+    }
 }

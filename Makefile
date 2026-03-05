@@ -1,4 +1,4 @@
-SRC = my_route_lookup.c trie.c trie.h io.c io.h utils.c utils.h
+SRC = my_route_lookup.c trie.c io.c utils.c
 CFLAGS = -Wall -O3
 
 all: my_route_lookup
@@ -10,5 +10,3 @@ my_route_lookup: $(SRC)
 
 clean:
 	rm -f my_route_lookup
-
-#RL Lab 2020 Switching UC3M

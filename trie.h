@@ -3,25 +3,30 @@
 
 #include <stdint.h>
 
-// Definición de la estructura del nodo
+// Node structure definition
 struct node {
+    // Forwarding Info
     uint32_t prefix; 
     int prefixLength;
-    int bitPosition; 
-    int outInterface;
+    int bitPosition;  // Next bit to evaluate (index 0 to 31)
+    int outInterface; // We use -1 to indicate it is an intermediate node (no valid route)
 
-    int k; 
-    struct node **children; 
+    // Children
+    int k;                   // Branching factor: 2^k children
+    struct node **children;  // Dynamic array of pointers to children
 };
 
-// Declaraciones de las funciones de la Fase 1
+// Phase 1 function declarations (Tree Building)
 struct node* createNode(int bitPos);
 void insertPrefixSimpleTrie(struct node *root, uint32_t ip, int prefixLength, int outInterface);
 
-// Declaraciones de las funciones de la Fase 3
+// Phase 3 function declarations (Lookup)
 uint32_t getBits(uint32_t ip, int bitPosition, int k);
 int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength);
 int lookUp(struct node *root, uint32_t ip, int *memory_accesses);
 
+// Phase 4 function declarations (Patricia Compression & Utils)
+void patriciaCompress(struct node **node_ptr);
+int countNodes(struct node *root);
+
 #endif // TRIE_H
-// comitet 
