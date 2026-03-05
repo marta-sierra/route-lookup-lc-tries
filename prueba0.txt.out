@@ -1,0 +1,11 @@
+80.1.3.4;1;1;168
+129.3.4.4;2;2;60
+212.1.2.4;2;2;40
+
+Number of nodes in trie= 0
+Packets processed= 3
+Average nodes accessed= 1.67
+Average packet processing time (nsecs)= 89.33
+Memory (Kbytes) = 2556
+CPU Time (secs)= 0.000538
+

@@ -39,4 +39,70 @@ void insertPrefixSimpleTrie(struct node *root, uint32_t ip, int prefixLength, in
         
         // If the path does not exist, create the intermediate node
         if (current->children[bit] == NULL) {
-            //
+            // The new node will evaluate the next bit, so its position is i+1
+            current->children[bit] = createNode(i + 1);
+        }
+        
+        // Move down to the child
+        current = current->children[bit];
+    }
+    
+    // Upon exiting the loop, we have reached the end of the prefix.
+    // Store the routing information in this final node.
+    current->outInterface = outInterface;
+    current->bitPosition = prefixLength;
+    current->prefix = ip;
+    current->prefixLength = prefixLength;
+}
+// Helper function: Extracts 'k' bits starting from 'bitPosition' going downwards. 
+uint32_t getBits(uint32_t ip, int bitPosition, int k) { 
+    int shift_amount = 32 - (bitPosition + k); 
+    uint32_t mask = (1 << k) - 1; 
+    uint32_t extracted_bits = (ip >> shift_amount) & mask; 
+    return extracted_bits; 
+}
+
+// Helper function: Compares the top prefixLength bits of the IP and the Prefix
+int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength) { 
+    if (prefixLength == 0) { 
+        return 1; // 1 significa 'true' en C
+    }
+    
+    int shift_amount = 32 - prefixLength; 
+    uint32_t ip_shifted = ip >> shift_amount; 
+    uint32_t prefix_shifted = prefix >> shift_amount; 
+    
+    if (ip_shifted == prefix_shifted) { 
+        return 1; 
+    } else { 
+        return 0; // 0 significa 'false'
+    }
+}
+
+// LOOKUP FUNCTION 
+int lookUp(struct node *root, uint32_t ip, int *memory_accesses) {
+    struct node *current = root;
+    int best_match_interface = root->outInterface;
+    *memory_accesses = 0;
+    
+    while (current != NULL) {
+        (*memory_accesses)++;
+        
+        // Check if this node holds a valid route 
+        if (current->outInterface != -1) { 
+            // Verify the prefix matches (because Patricia skips bits) 
+            if (checkPrefixMatch(ip, current->prefix, current->prefixLength) == 1) {
+                best_match_interface = current->outInterface;
+            }
+        }
+            
+        // Extraemos los bits para saber por qué rama bajar
+        int index = getBits(ip, current->bitPosition, current->k);
+        
+        // Saltamos al hijo. 
+        // Nota: Si el hijo es NULL (estamos en un leaf), el while se romperá automáticamente arriba.
+        current = current->children[index]; 
+    }
+    
+    return best_match_interface;
+}
