@@ -10,6 +10,7 @@ int main(int argc, char *argv[]) {
     uint32_t prefix;
     int prefixLength;
     int outInterface;
+
     if (argc != 3) {
         printf("Uso: %s <routing_table.txt> <paquetes_prueba.txt>\n", argv[0]);
         return 1;
