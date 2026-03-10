@@ -89,8 +89,7 @@ int main(int argc, char *argv[]) {
     }
 
     printSummary(nodes_after, total_lookups, avg_memory_accesses, avg_processing_time);
-    // --- AÑADE ESTA LÍNEA PARA VER EL CONTENIDO DE LA MEMORIA ---
-    printPaperTables();
+
     // Mandatory memory cleanup in C
     free(next_hop_table);
     free(prefix_vector);
