@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <time.h> // Used for struct timespec to measure execution time
+#include <time.h> 
 
 #include "io.h"
 #include "trie.h"
@@ -11,65 +11,76 @@ int main(int argc, char *argv[]) {
     int prefixLength;
     int outInterface;
 
+    // Command line arguments check
     if (argc != 3) {
-        printf("Uso: %s <routing_table.txt> <paquetes_prueba.txt>\n", argv[0]);
+        printf("Usage: %s <routing_table.txt> <test_packets.txt>\n", argv[0]);
         return 1;
     }
-    // Open the input and output files (adjust the text file names if necessary)
+
     int attempt = initializeIO(argv[1], argv[2]);
     if (attempt != OK) {
         printIOExplanationError(attempt);
         return 1;
     }
 
-    // Initialize the Root node
+    // 1. Allocate dynamic memory for the 3 Paper Vectors (SIZES INCREASED TO PREVENT SEGFAULT)
+    next_hop_table = (int*)malloc(500000 * sizeof(int));
+    prefix_vector = (struct prefix_vector_entry*)malloc(500000 * sizeof(struct prefix_vector_entry));
+    base_vector = (struct base_vector_entry*)malloc(500000 * sizeof(struct base_vector_entry));
+
     struct node *root = createNode(0);
     root->prefix = 0;           
     root->prefixLength = 0;     
     root->outInterface = 0;     
 
-    // Phase 1 and 2: Build the standard binary trie
+    // Phase 1 and 2: Build the standard binary tree
     int routes_added = 0;
     while (readFIBLine(&prefix, &prefixLength, &outInterface) == OK) {
         insertPrefixSimpleTrie(root, prefix, prefixLength, outInterface);
         routes_added++;
     }
 
-    // Phase 4: Patricia Compression
+    // --- NEW: Extract information and build the external tables BEFORE compressing ---
+    buildTables(root, -1);
+    
+    // Phase 4 and 5: Compression (Patricia + LC-Trie)
     int nodes_before = countNodes(root);
-    
-    // We pass the MEMORY ADDRESS of root (double pointer) to the compression algorithm
     patriciaCompress(&root); 
-    
+    levelCompress(root);
     int nodes_after = countNodes(root);
 
-    // Phase 3: Lookup and Metrics
+    // Print architecture metrics
+    printf("=========================================\n");
+    printf("Nilsson & Karlsson Architecture Deployed!\n");
+    printf("Routes added: %d\n", routes_added);
+    printf("Base Vector size: %d entries\n", base_vector_count);
+    printf("Prefix Vector size: %d entries\n", prefix_vector_count);
+    printf("Next Hop Table size: %d entries\n", next_hop_count);
+    printf("Tree nodes: %d -> %d\n", nodes_before, nodes_after);
+    printf("=========================================\n\n");
+
+    // Phase 3: Lookups and Performance Metrics
     int total_lookups = 0;
     int total_memory_accesses = 0;
     double total_packet_processing_time = 0.0;
     uint32_t ip;
     
-    // Read the IPs we want to search for
     while (readInputPacketFileLine(&ip) == OK) {
         int accesses_this_lookup = 0;
         struct timespec initialTime, finalTime;
         double searchingTime;
         
-        // Measure time strictly around the lookup function
         clock_gettime(CLOCK_MONOTONIC_RAW, &initialTime);
         int bestInterface = lookUp(root, ip, &accesses_this_lookup);
         clock_gettime(CLOCK_MONOTONIC_RAW, &finalTime);
         
-        // Call the professor's print function to generate the .out file line by line
         printOutputLine(ip, bestInterface, &initialTime, &finalTime, &searchingTime, accesses_this_lookup);
         
-        // Update global metrics for the final summary
         total_lookups++;
         total_memory_accesses += accesses_this_lookup;
         total_packet_processing_time += searchingTime;
     }
 
-    // Calculate the averages requested by the professor
     double avg_memory_accesses = 0;
     double avg_processing_time = 0;
     if (total_lookups > 0) {
@@ -77,12 +88,14 @@ int main(int argc, char *argv[]) {
         avg_processing_time = total_packet_processing_time / total_lookups;
     }
 
-    // Print the final summary using the ACTUAL number of nodes after compression
     printSummary(nodes_after, total_lookups, avg_memory_accesses, avg_processing_time);
-
-    // Clean up IO streams
+    // --- AÑADE ESTA LÍNEA PARA VER EL CONTENIDO DE LA MEMORIA ---
+    printPaperTables();
+    // Mandatory memory cleanup in C
+    free(next_hop_table);
+    free(prefix_vector);
+    free(base_vector);
     freeIO();
     
-    // Note: To prevent memory leaks, a freeTrie(root) function should eventually be added here
     return 0;
 }
