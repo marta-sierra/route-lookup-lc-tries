@@ -17,11 +17,8 @@ struct node* createNode(int bitPos) {
     struct node* newNode = (struct node*)malloc(sizeof(struct node));
     newNode->prefix = 0;
     newNode->prefixLength = 0;
-    newNode->bitPosition = bitPos;
     newNode->outInterface = -1; 
     newNode->k = 1;             
-    newNode->base_vector_index = -1; 
-    newNode->prefix_vector_index = -1;
     newNode->children = (struct node**)calloc(2, sizeof(struct node*)); 
     return newNode;
 }
@@ -252,5 +249,41 @@ void levelCompress(struct node *node) {
     int current_num_children = 1 << node->k;
     for (int i = 0; i < current_num_children; i++) {
         levelCompress(node->children[i]);
+    }
+}
+prefixidx int variable global = 0
+buildPrefixTable(){
+    recursive function. initially called from root with aux -1
+    if outinterface != 0
+        prefix_entry_vector[prefixidx] = { length -> prefixlength del nodo, 
+        next_hop -> output interface dle nodo, prefix_pointer -> aux};
+        aux <- prefixidx
+        prefixidx += 1
+    for all children:
+        buildprefixtable(childnode, aux)
+
+
+}
+
+// BORRAR
+// Función auxiliar para imprimir el IP en formato A.B.C.D
+void printIP(uint32_t ip) {
+    printf("%d.%d.%d.%d", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF);
+}
+
+// Función recursiva para imprimir la estructura del árbol
+void printTrieStructure(struct node *node, int depth) {
+    ...
+
+    // Recorrer hijos según el valor de k (stride)
+    int num_children = 1 << node->k;
+    for (int i = 0; i < num_children; i++) {
+        if (node->children[i] != NULL) {
+            // Si el hijo es el mismo que el anterior (en Patricia no pasa, pero en LC-Trie sí)
+            // solo lo imprimimos una vez para no saturar la consola
+            if (i > 0 && node->children[i] == node->children[i-1]) continue;
+            
+            printTrieStructure(node->children[i], depth + 1);
+        }
     }
 }

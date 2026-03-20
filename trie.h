@@ -3,42 +3,41 @@
 
 #include <stdint.h>
 
-// 1. Next-Hop Table (Array of integers)
-extern int *next_hop_table;
-extern int next_hop_count;
-
 // 2. Prefix Vector
 struct prefix_vector_entry {
-    uint32_t prefix;
-    int prefixLength;
-    int next_hop_index;
-    int prefix_vector_index; // -1 means there is no shorter prefix
+    int length;
+    int next_hop;
+    int prefix_pointer; // -1 means there is no shorter prefix
 };
 extern struct prefix_vector_entry *prefix_vector;
-extern int prefix_vector_count;
+//extern int prefix_vector_count;
 
 // 3. Base Vector
 struct base_vector_entry {
     uint32_t ip_string;
-    int next_hop_index;
-    int prefix_vector_index; // -1 means there is no shorter prefix
+    int next_hop;
+    int prefix_pointer; // -1 means there is no shorter prefix
 };
 extern struct base_vector_entry *base_vector;
-extern int base_vector_count;
+//extern int base_vector_count;
+
+struct main_vector_entry {
+    int branch;
+    int skip;
+    int pointer; 
+};
+extern struct main_vector_entry *main_vector;
 
 // 4. LC-Trie Node (Modified for the paper architecture)
 struct node {
-    uint32_t prefix;     // (Only used during Phase 1 tree building)
-    int prefixLength;    // (Only used during Phase 1 tree building)
-    int outInterface;    // (Only used during Phase 1 tree building)
-
-    int bitPosition; 
-    int k; 
-    struct node **children; 
-    
-    // --- NEW: Pointer from the leaf to the Base Vector ---
-    int base_vector_index; // -1 if it is an internal node
-    int prefix_vector_index;
+    uint32_t prefix;     
+    int prefixLength;    
+    int outInterface;
+    int k; // 2^k hijos, mirar k bits
+    struct node **children;
+    int temp_id; 
+    int temp_skip;
+    int temp_prefix_index; // inicializar todos a menos 1
 };
 
 // Phase 1-3 Declarations
@@ -59,5 +58,8 @@ void levelCompress(struct node *node);
 int checkFull(struct node *node, int depth, int expected_bit);
 struct node* getDescendantAtDepth(struct node *node, int bit_pattern, int depth);
 
+// borrar
+void printTrieStructure(struct node *node, int depth);
 
 #endif // TRIE_H
+

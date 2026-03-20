@@ -23,11 +23,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 1. Allocate dynamic memory for the 3 Paper Vectors (SIZES INCREASED TO PREVENT SEGFAULT)
-    next_hop_table = (int*)malloc(500000 * sizeof(int));
-    prefix_vector = (struct prefix_vector_entry*)malloc(500000 * sizeof(struct prefix_vector_entry));
-    base_vector = (struct base_vector_entry*)malloc(500000 * sizeof(struct base_vector_entry));
-
     struct node *root = createNode(0);
     root->prefix = 0;           
     root->prefixLength = 0;     
@@ -45,22 +40,31 @@ int main(int argc, char *argv[]) {
     
     // Phase 4 and 5: Compression (Patricia + LC-Trie)
     int nodes_before = countNodes(root);
-    patriciaCompress(&root); 
+    patriciaCompress(&root);
+
+    printf("\n>>> ESTRUCTURA DESPUÉS DE PATRICIA COMPRESS <<<\n");
+    printTrieStructure(root, 0);
+    printf("===============================================\n"); 
+
     levelCompress(root);
+    printf("\n>>> ESTRUCTURA DESPUÉS DE LEVELS COMPRESS <<<\n");
+    printTrieStructure(root, 0);
+    printf("===============================================\n");
+    
     int nodes_after = countNodes(root);
 
-    // Print architecture metrics
-    printf("=========================================\n");
-    printf("Nilsson & Karlsson Architecture Deployed!\n");
-    printf("Routes added: %d\n", routes_added);
-    printf("Base Vector size: %d entries\n", base_vector_count);
-    printf("Prefix Vector size: %d entries\n", prefix_vector_count);
-    printf("Next Hop Table size: %d entries\n", next_hop_count);
-    printf("Tree nodes: %d -> %d\n", nodes_before, nodes_after);
-    printf("=========================================\n\n");
+    // PAPER TABLE BUILDING
+    // 1. Allocate dynamic memory for the 3 Paper Vectors (SIZES INCREASED TO PREVENT SEGFAULT)
+    prefix_vector = (struct prefix_vector_entry*)malloc(COUNT INTERNAL NODES LEVEL COMPRESSED TRIE  * sizeof(struct prefix_vector_entry));
+    buildprefixTable(pass what needed)
+    
+    
+    
+    
+    base_vector = (struct base_vector_entry*)malloc(500000 * sizeof(struct base_vector_entry));
 
     // Phase 3: Lookups and Performance Metrics
-    int total_lookups = 0;
+    /* int total_lookups = 0;
     int total_memory_accesses = 0;
     double total_packet_processing_time = 0.0;
     uint32_t ip;
@@ -88,7 +92,7 @@ int main(int argc, char *argv[]) {
         avg_processing_time = total_packet_processing_time / total_lookups;
     }
 
-    printSummary(nodes_after, total_lookups, avg_memory_accesses, avg_processing_time);
+    printSummary(nodes_after, total_lookups, avg_memory_accesses, avg_processing_time); */
 
     // Mandatory memory cleanup in C
     free(next_hop_table);
