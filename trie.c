@@ -15,8 +15,8 @@ int base_vector_count = 0;
 // =======================================================
 struct node* createNode(int bitPos) {
     struct node* newNode = (struct node*)malloc(sizeof(struct node));
-    newNode->prefix = 0;
-    newNode->prefixLength = 0;
+    newNode->prefix = 
+    newNode->prefixLength = ;
     newNode->outInterface = -1; 
     newNode->k = 1;             
     newNode->children = (struct node**)calloc(2, sizeof(struct node*)); 
@@ -33,66 +33,13 @@ void insertPrefixSimpleTrie(struct node *root, uint32_t ip, int prefixLength, in
         current = current->children[bit];
     }
     current->outInterface = outInterface;
-    current->bitPosition = prefixLength;
     current->prefix = ip;
     current->prefixLength = prefixLength;
 }
 
-// =======================================================
-// --- PHASE 2.5: BUILD PAPER TABLES ---
-// =======================================================
-
-// Helper to avoid repeating interfaces in the next-hop table
-int addNextHop(int outInterface) {
-    for(int i = 0; i < next_hop_count; i++) {
-        if(next_hop_table[i] == outInterface) return i;
-    }
-    next_hop_table[next_hop_count] = outInterface;
-    return next_hop_count++;
-}
-
-// Traverses the initial tree and populates Base Vector, Prefix Vector, and Next Hop Table
-void buildTables(struct node *node, int current_prefix_idx) {
-    if (node == NULL) return;
-    int my_prefix_idx = current_prefix_idx;
-
-    if (node->outInterface != -1) {
-        int nh_idx = addNextHop(node->outInterface);
-
-        // If it is a leaf, the information goes to the Base Vector
-        if (node->children[0] == NULL && node->children[1] == NULL) {
-            base_vector[base_vector_count].ip_string = node->prefix;
-            base_vector[base_vector_count].next_hop_index = nh_idx;
-            base_vector[base_vector_count].prefix_vector_index = current_prefix_idx;
-            
-            node->base_vector_index = base_vector_count;
-            base_vector_count++;
-        } 
-        // If it is an intermediate node, the information goes to the Prefix Vector
-        else {
-            prefix_vector[prefix_vector_count].prefix = node->prefix;
-            prefix_vector[prefix_vector_count].prefixLength = node->prefixLength;
-            prefix_vector[prefix_vector_count].next_hop_index = nh_idx;
-            prefix_vector[prefix_vector_count].prefix_vector_index = current_prefix_idx;
-            
-            my_prefix_idx = prefix_vector_count;
-            prefix_vector_count++;
-            
-            node->base_vector_index = -1; // Internal nodes do not point to the Base Vector
-        }
-    }
-    node->prefix_vector_index = my_prefix_idx;
-    // Recursive call for all existing children
-    if (node->children != NULL) {
-        int num_children = 1 << node->k;
-        for (int i = 0; i < num_children; i++) {
-            buildTables(node->children[i], my_prefix_idx);
-        }
-    }
-}
 
 // =======================================================
-// --- PHASE 3: LOOKUP FUNCTIONS ---
+// --- PHASE ? LOOKUP FUNCTIONS ---
 // =======================================================
 uint32_t getBits(uint32_t ip, int bitPosition, int k) { 
     int shift_amount = 32 - (bitPosition + k); 
@@ -105,60 +52,36 @@ int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength) {
     int shift_amount = 32 - prefixLength; 
     return (ip >> shift_amount) == (prefix >> shift_amount); 
 }
-// STRICT PAPER LOOKUP ALGORITHM
+// LOOKUP ALGORITHM
 int lookUp(struct node *root, uint32_t ip, int *memory_accesses) {
     struct node *current = root;
     *memory_accesses = 0;
-    
-    // 1. Trie Search (Fast-Forward)
-    while (current != NULL) {
-        (*memory_accesses)++;
-        if (current->children == NULL) break; // Llegamos a una hoja
-        int index = getBits(ip, current->bitPosition, current->k);
-        if (current->children[index] == NULL) break; // ¡Nos caemos del árbol en un nodo interno!
-        current = current->children[index]; 
-    }
-    
-    if (current == NULL) return 0;
+    vamos a empezar por el mainvector que tiene en la primera entrada la root.
+    llevamos una cuenta de que bit estamos mirando.
+    usando la branch y el skip obtenemos que bits hay que extraer (le sumamos el skip y cogemos desde ahi hasta ahi + branch)
+    nos movemos a mainvector[pointer + el valor de estos bits extraidos]
+    excepto que en este nodo branch fuera cero, entonces no hay comparacion, si no que nos movemoss 
+    a basevector[pointer]  .
+    nos vamos moviendo por el mainvector hasta que lleguemos a una leave que sera este caso en el que llegamos al base vector 
 
-    int pref_idx = -1;
 
-    // 2. Comprobamos dónde hemos parado
-    if (current->base_vector_index != -1) {
-        // Hemos llegado a una hoja. Miramos el Base Vector.
-        (*memory_accesses)++;
-        struct base_vector_entry bv = base_vector[current->base_vector_index];
+    una vez en el basevector vamos a coger la ip ahi guardada. sera ipref. 
+    hacemos comprobacion hasta el numero de bits que haya que mirar (lo hemos guardado del calculo en mainvector)
+ si hay match podemos reutrn ese next_hop 
+si no hay match cogemos el prefix pointer. si es -1 no hay ruta devolvemos 0
+si no nos vamos a la tabla de prefix_vector usando ese prefix poitner que tiene guardado la longitud de cada prefijo
+comparamos el ip que buscamos con el ip ref extraidos los bits que nos diga esta longituf
+cuando haya match daremos next hop, cuando no hay amatch cogemos el siguiente pointer ahi guardado
+seguimos asi moviendonos por la prefix table hasta que o hagamos match o veamos un poitner -1 que 
+que entonces devolvemos 0
 
-        if (checkPrefixMatch(ip, bv.ip_string, current->prefixLength) == 1) {
-            // Éxito exacto
-            (*memory_accesses)++;
-            return next_hop_table[bv.next_hop_index];
-        }
-        // Si falla, preparamos el índice para mirar el Prefix Vector
-        pref_idx = bv.prefix_vector_index;
-    } else {
-        // Nos hemos caído en un nodo interno. 
-        // Pasamos directamente al Prefix Vector asociado a esta rama.
-        pref_idx = current->prefix_vector_index;
-    }
 
-    // 3. Prefix Vector Lookup (Backtracking)
-    while (pref_idx != -1) {
-        (*memory_accesses)++;
-        struct prefix_vector_entry pv = prefix_vector[pref_idx];
-        
-        if (checkPrefixMatch(ip, pv.prefix, pv.prefixLength) == 1) {
-            (*memory_accesses)++;
-            return next_hop_table[pv.next_hop_index];
-        }
-        pref_idx = pv.prefix_vector_index;
-    }
-    
+
     return 0; // Default route
 }
 
 // =======================================================
-// --- PHASE 4 & 5: COMPRESSION & UTILS ---
+// --- PHASE ? COMPRESSION & UTILS ---
 // =======================================================
 int countNodes(struct node *root) {
     if (root == NULL) return 0;
@@ -251,21 +174,24 @@ void levelCompress(struct node *node) {
         levelCompress(node->children[i]);
     }
 }
+
 prefixidx int variable global = 0
 buildPrefixTable(){
     recursive function. initially called from root with aux -1
-    if outinterface != 0
-        prefix_entry_vector[prefixidx] = { length -> prefixlength del nodo, 
-        next_hop -> output interface dle nodo, prefix_pointer -> aux};
-        aux <- prefixidx
-        prefixidx += 1
-    for all children:
-        buildprefixtable(childnode, aux)
+    if leaf:
+        node.temp_prefix_index = aux
+    else:
+        if outinterface != 0
+            prefix_entry_vector[prefixidx] = { length -> prefixlength del nodo, 
+            next_hop -> output interface dle nodo, prefix_pointer -> aux};
+            aux <- prefixidx
+            prefixidx += 1
+        for all children:
+            buildprefixtable(childnode, aux)
 
 
 }
 
-// BORRAR
 // Función auxiliar para imprimir el IP en formato A.B.C.D
 void printIP(uint32_t ip) {
     printf("%d.%d.%d.%d", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF);
