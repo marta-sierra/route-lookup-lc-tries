@@ -35,6 +35,9 @@ struct node {
     int outInterface;
     int k; // 2^k hijos, mirar k bits
     struct node **children;
+    // Depth/bit position of this node in the original binary trie (0..32).
+    // Inserted nodes set this to the current prefix length.
+    int bitPosition;
     int temp_id; 
     int temp_skip;
     int temp_prefix_index; // inicializar todos a menos 1
@@ -47,8 +50,9 @@ uint32_t getBits(uint32_t ip, int bitPosition, int k);
 int checkPrefixMatch(uint32_t ip, uint32_t prefix, int prefixLength);
 
 // Paper Architecture Table Declarations
-int addNextHop(int outInterface);
-void buildTables(struct node *node, int current_prefix_idx);
+void buildprefixTable(struct node *root);
+void deleteSingleChildren(struct node **root_ptr);
+void buildMainBaseTables(struct node *root);
 int lookUp(struct node *root, uint32_t ip, int *memory_accesses);
 
 // Phase 4-5 Declarations (Compression)
