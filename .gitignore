@@ -1,0 +1,11 @@
+# Build output
+my_route_lookup
+*.o
+
+# Lookup results written next to each input file
+*.out
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

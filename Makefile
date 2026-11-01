@@ -1,12 +1,20 @@
-SRC = my_route_lookup.c trie.c io.c utils.c
-CFLAGS = -Wall -O3
+CC      ?= gcc
+CFLAGS  ?= -Wall -O3
+SRC     := $(wildcard src/*.c)
+BIN     := my_route_lookup
 
-all: my_route_lookup
+.PHONY: all clean run test
 
-my_route_lookup: $(SRC)
-	gcc $(CFLAGS) $(SRC) -o my_route_lookup -lm
+all: $(BIN)
 
-.PHONY: clean
+$(BIN): $(SRC) $(wildcard src/*.h)
+	$(CC) $(CFLAGS) $(SRC) -o $@ -lm
+
+# Small example: make run TABLE=data/routing_table_mid.txt PACKETS=tests/prueba0.txt
+TABLE   ?= data/routing_table_simple.txt
+PACKETS ?= tests/prueba0.txt
+run: $(BIN)
+	./$(BIN) $(TABLE) $(PACKETS)
 
 clean:
-	rm -f my_route_lookup
+	rm -f $(BIN) tests/*.out
